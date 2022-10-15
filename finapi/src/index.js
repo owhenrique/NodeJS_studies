@@ -27,15 +27,26 @@ function customerExistsVerify(request, response, next) {
     return next();
 }
 
-app.post('/account', (request, response) => {
-    
+function getBalance(statement) {
+    const balance = statement.reduce((acc, operation) => {
+        if(operation.type === 'credit') {
+            return acc + operation.amount;
+        } else {
+            return acc - operation.amount;
+        }
+    }, 0);
+
+    return balance;
+}
+
+app.post('/account', (request, response) => { 
     const { cpf, name } = request.body;
 
     const customerExists = customers.some(
         (customer) => customer.cpf === cpf
     );
 
-    if(customerExists){
+    if(customerExists) {
         return response.status(400).json({
             error: "Customer already exists!"
         });
@@ -51,10 +62,9 @@ app.post('/account', (request, response) => {
     return response.status(201).send();
 });
 
-// app.use(customerExistsVerify);
+app.use(customerExistsVerify);
 
-app.get('/statement', customerExistsVerify, (request, response) => {
-
+app.get('/statement', (request, response) => {
     const { customer } = request;
 
     return response.status(200).json(
@@ -62,9 +72,8 @@ app.get('/statement', customerExistsVerify, (request, response) => {
     );
 });
 
-app.post('/deposite', customerExistsVerify, (request, response) => {
+app.post('/deposite', (request, response) => {
     const { description, amount } = request.body;
-
     const { customer } = request;
 
     const statementOperation = {
@@ -72,6 +81,29 @@ app.post('/deposite', customerExistsVerify, (request, response) => {
         amount,
         created_at: new Date(),
         type: "credit"
+    }
+
+    customer.statement.push(statementOperation);
+
+    return response.status(201).send();
+});
+
+app.post('/withdraw', (request, response) => {
+    const { amount } = request.body;
+    const { customer} = request;
+
+    const balance = getBalance(customer.statement);
+
+    if(balance < amount) {
+        return response.status(400).json({
+            error: "Insufficient funds!"
+        });
+    }
+
+    const statementOperation = {
+        amount,
+        created_at: new Date(),
+        type: "debit"
     }
 
     customer.statement.push(statementOperation);
