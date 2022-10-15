@@ -8,7 +8,6 @@ app.use(express.json());
 const customers = [];
 
 // Middleware
-
 function customerExistsVerify(request, response, next) {
     const { cpf } = request.headers;
 
@@ -39,6 +38,7 @@ function getBalance(statement) {
     return balance;
 }
 
+// Routes 
 app.post('/account', (request, response) => { 
     const { cpf, name } = request.body;
 
@@ -110,5 +110,56 @@ app.post('/withdraw', (request, response) => {
 
     return response.status(201).send();
 });
+
+app.get('/statement/date', (request, response) => {
+    const { customer } = request;
+    const { date } = request.query;
+
+    const dateFormat = new Date(date + " 00:00");
+
+    const statement = customer.statement.filter(
+        (statement) => 
+            statement.created_at.toDateString() === 
+            new Date(dateFormat).toDateString()
+    );
+
+    return response.status(200)
+        .json(statement);
+});
+
+app.put('/account', (request, response) => {
+    const { name } = request.body;
+    const { customer } = request;
+
+    customer.name = name;
+
+    return response.status(201).send();
+});
+
+app.get('/account', (request, response) => {
+    const { customer } = request;
+
+    return response.status(200)
+        .json(customer);
+});
+
+app.delete('/account', (request, response) => {
+    const { customer } = request;
+
+    // splice
+    customers.splice(customer, 1);
+
+    return response.status(200)
+        .json(customers);
+});
+
+app.get('/balance', (request, response) => {
+    const { customer } = request;
+
+    const balance = getBalance(customer.statement);
+
+    return response.status(200)
+        .json(balance);
+})
 
 app.listen(3000);
